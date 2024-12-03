@@ -5,7 +5,7 @@ from tkinter import Tk, Label, Entry, Button, StringVar, messagebox, ttk
 
 # 預設資料庫文件與 URL
 DB_FILE = "contacts.db"
-DEFAULT_URL = "https://landscape.ncut.edu.tw/p/412-1031-6821.php"
+DEFAULT_URL = "https://csie.ncut.edu.tw/content.php?key=86OP82WJQO"  # 替換為資工系的目標 URL
 
 
 def setup_database():
@@ -52,19 +52,29 @@ def save_to_database(name: str, title: str, email: str, phone_extension: str) ->
 
 def parse_contacts(html: str) -> list[tuple[str, str, str, str]]:
     """使用正規表示式從 HTML 中提取聯絡資訊（姓名、職稱、Email、電話）"""
-    # 正規表示式，用來抓取姓名、職稱、Email 和電話
     contact_pattern = re.compile(
-        r'<a href=".*?"><img.*?alt="(.*?)".*?</a>.*?職　　稱：</td>\s*<td>(.*?)</td>.*?電子郵件 :.*?mailto:(.*?)".*?聯絡電話 :.*?#(\d{4})</td>', 
-        re.DOTALL)
-    
+        r'<div class="member_name">.*?<a href=".*?">(.*?)</a>.*?</div>'
+        r'.*?<div class="member_info_title">.*?職稱.*?</div>\s*<div class="member_info_content">(.*?)</div>'
+        r'.*?<div class="member_info_title">.*?信箱.*?</div>\s*<div class="member_info_content">.*?mailto:(.*?)".*?</div>'
+        r'.*?<div class="member_info_title">.*?電話.*?</div>\s*<div class="member_info_content">分機：(\d+)</div>',
+        re.DOTALL
+    )
+
     matches = contact_pattern.findall(html)
-    
+
     contacts = []
     for match in matches:
         name, title, email, phone_extension = match
         if name and title and email and phone_extension:
-            contacts.append((name, title, email, phone_extension))
+            # 處理電子郵件，去除多餘的 "mailto://" 或其他前綴
+            email = email.strip()
+            if email.startswith("mailto://"):
+                email = email.replace("mailto://", "")
+            elif email.startswith("mailto:"):
+                email = email.replace("mailto:", "")
+            contacts.append((name.strip(), title.strip(), email, phone_extension.strip()))
     return contacts
+
 
 
 def scrape_contacts(url: str) -> list[tuple[str, str, str, str]]:
